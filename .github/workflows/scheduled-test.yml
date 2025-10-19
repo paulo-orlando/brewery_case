@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pipeline-execution-logs
           path: pipeline-logs/
@@ -100,7 +100,8 @@ jobs:
           docker-compose -f docker/docker-compose.yml down -v
 
       - name: Send notification
-        if: failure()
+        if: failure() && secrets.SLACK_WEBHOOK != ''
+        continue-on-error: true
         uses: 8398a7/action-slack@v3
         with:
           status: failure
