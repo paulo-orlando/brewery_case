@@ -43,7 +43,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        if: ${{ secrets.DOCKERHUB_USERNAME }}
+        if: secrets.DOCKERHUB_USERNAME != ''
+        continue-on-error: true
 
       - name: Extract metadata
         id: meta
@@ -85,4 +86,5 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/brewery-pipeline
           readme-filepath: ./README.md
-        if: ${{ secrets.DOCKERHUB_USERNAME }}
+        if: secrets.DOCKERHUB_USERNAME != ''
+        continue-on-error: true
