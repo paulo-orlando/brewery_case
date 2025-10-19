@@ -310,10 +310,10 @@ jobs:
     if: always()
     steps:
       - name: Send Slack notification
+        if: always()
+        continue-on-error: true
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
           text: 'Brewery Pipeline CI/CD: ${{ job.status }}'
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        if: always() && secrets.SLACK_WEBHOOK != ''
-        continue-on-error: true

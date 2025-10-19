@@ -100,7 +100,7 @@ jobs:
           docker-compose -f docker/docker-compose.yml down -v
 
       - name: Send notification
-        if: failure() && secrets.SLACK_WEBHOOK != ''
+        if: failure()
         continue-on-error: true
         uses: 8398a7/action-slack@v3
         with:
