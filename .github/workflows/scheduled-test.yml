@@ -103,7 +103,8 @@ jobs:
         if: failure()
         continue-on-error: true
         uses: 8398a7/action-slack@v3
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         with:
           status: failure
           text: '⚠️ Scheduled pipeline test failed!'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
