@@ -1,7 +1,11 @@
+# ============================================
+# PYTHON
+# ============================================
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # C extensions
 *.so
@@ -20,51 +24,163 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual environments
+# ============================================
+# VIRTUAL ENVIRONMENTS
+# ============================================
 .venv/
 venv/
 ENV/
 env/
+.virtualenv/
 
-# Airflow
+# ============================================
+# AIRFLOW
+# ============================================
 logs/
 airflow.db
 airflow.cfg
 airflow-webserver.pid
 standalone_admin_password.txt
+airflow-scheduler.pid
+webserver_config.py
+unittests.cfg
 
-# Data files
+# ============================================
+# DATA FILES (generated at runtime)
+# ============================================
 data/
 *.csv
-*.json
 *.parquet
+*.json
+!requirements.txt
+!package.json
+!pytest.ini
+!.gitignore
 
-# Docker
+# ============================================
+# DOCKER
+# ============================================
 docker/logs/
 docker/plugins/
+docker-compose.override.yml
 
-# IDE
+# ============================================
+# IDE & EDITORS
+# ============================================
+# VSCode
 .vscode/
+.vscode-test/
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iml
+*.iws
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 *~
+.*.swp
 
-# Testing
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================
+# TESTING
+# ============================================
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 *.cover
 .hypothesis/
+.tox/
+.nox/
+coverage.xml
+*.log
+test_results.xml
+nosetests.xml
 
-# OS
+# ============================================
+# JUPYTER NOTEBOOKS (checkpoints)
+# ============================================
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ============================================
+# OS SPECIFIC
+# ============================================
+# macOS
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
+._*
 
-# Environment variables
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# ENVIRONMENT VARIABLES & SECRETS
+# ============================================
 .env
 .env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+.secrets/
+
+# ============================================
+# TEMPORARY & BUILD FILES
+# ============================================
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+tmp/
+temp/
+
+# ============================================
+# NON-CORE FILES (specific to this project)
+# ============================================
+# Old/test API scripts (not part of solution)
+src/api/api.py
+src/api/api2.py
+src/api/test_api.py
+
+# Test Python file in root
+teste_python.py
+
+# PySpark cheatsheet (reference only)
+PySpark_Cheatsheet.md
+
+# Scripts directory (helper scripts, not core)
+scripts/
+
+# Old test DAG (not part of solution)
+dags/teste_dag.py
