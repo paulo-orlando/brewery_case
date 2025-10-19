@@ -6,7 +6,7 @@ import os
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def fetch_page(page: int, per_page: int = 50):
+def fetch_page(page: int, per_page: int = 200):
     url = "https://api.openbrewerydb.org/v1/breweries"
     params = {"page": page, "per_page": per_page}
     print(f"Tentando buscar página {page}...")
