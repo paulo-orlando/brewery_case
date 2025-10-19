@@ -1,0 +1,108 @@
+name: Scheduled Pipeline Test
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC (simulating production schedule)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  test-pipeline-execution:
+    name: Test Full Pipeline Execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and start services
+        run: |
+          docker-compose -f docker/docker-compose.yml build
+          docker-compose -f docker/docker-compose.yml up -d
+          echo "Waiting for Airflow to initialize..."
+          sleep 90
+
+      - name: Wait for Airflow webserver
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health; then
+              echo "✅ Airflow is ready"
+              break
+            fi
+            echo "Waiting for Airflow... ($i/30)"
+            sleep 10
+          done
+
+      - name: Trigger DAG execution
+        run: |
+          # Enable the DAG
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            airflow dags unpause brewery_pipeline
+          
+          # Trigger DAG run
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            airflow dags trigger brewery_pipeline
+
+      - name: Monitor DAG execution
+        run: |
+          sleep 10
+          
+          # Wait for DAG to complete (max 20 minutes)
+          for i in {1..120}; do
+            STATUS=$(docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+              airflow dags list-runs -d brewery_pipeline --state success --limit 1 | wc -l)
+            
+            if [ "$STATUS" -gt "1" ]; then
+              echo "✅ DAG completed successfully"
+              break
+            fi
+            
+            echo "DAG still running... ($i/120)"
+            sleep 10
+          done
+
+      - name: Check DAG status
+        run: |
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            airflow dags list-runs -d brewery_pipeline --limit 5
+
+      - name: Verify data outputs
+        run: |
+          # Check if data directories were created
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            ls -lah /opt/airflow/data/
+          
+          # Check for gold layer outputs
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            find /opt/airflow/data/gold -name "*.csv" -o -name "*.parquet"
+
+      - name: Export logs
+        if: always()
+        run: |
+          mkdir -p pipeline-logs
+          docker-compose -f docker/docker-compose.yml logs > pipeline-logs/docker-compose.log
+          docker-compose -f docker/docker-compose.yml exec -T airflow-webserver \
+            find /opt/airflow/logs -type f -name "*.log" -exec cat {} \; > pipeline-logs/airflow.log
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pipeline-execution-logs
+          path: pipeline-logs/
+
+      - name: Tear down services
+        if: always()
+        run: |
+          docker-compose -f docker/docker-compose.yml down -v
+
+      - name: Send notification
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: '⚠️ Scheduled pipeline test failed!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
