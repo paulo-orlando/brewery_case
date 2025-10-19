@@ -20,8 +20,8 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker compose -f docker/docker compose.yml build
-          docker compose -f docker/docker compose.yml up -d
+          docker compose -f docker/docker-compose.yml build
+          docker compose -f docker/docker-compose.yml up -d
           echo "Waiting for Airflow to initialize..."
           sleep 90
 
@@ -39,11 +39,11 @@ jobs:
       - name: Trigger DAG execution
         run: |
           # Enable the DAG
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             airflow dags unpause brewery_pipeline
           
           # Trigger DAG run
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             airflow dags trigger brewery_pipeline
 
       - name: Monitor DAG execution
@@ -52,7 +52,7 @@ jobs:
           
           # Wait for DAG to complete (max 20 minutes)
           for i in {1..120}; do
-            STATUS=$(docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+            STATUS=$(docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
               airflow dags list-runs -d brewery_pipeline --state success --limit 1 | wc -l)
             
             if [ "$STATUS" -gt "1" ]; then
@@ -66,25 +66,25 @@ jobs:
 
       - name: Check DAG status
         run: |
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             airflow dags list-runs -d brewery_pipeline --limit 5
 
       - name: Verify data outputs
         run: |
           # Check if data directories were created
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             ls -lah /opt/airflow/data/
           
           # Check for gold layer outputs
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             find /opt/airflow/data/gold -name "*.csv" -o -name "*.parquet"
 
       - name: Export logs
         if: always()
         run: |
           mkdir -p pipeline-logs
-          docker compose -f docker/docker compose.yml logs > pipeline-logs/docker compose.log
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml logs > pipeline-logs/docker compose.log
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             find /opt/airflow/logs -type f -name "*.log" -exec cat {} \; > pipeline-logs/airflow.log
 
       - name: Upload logs
@@ -97,7 +97,7 @@ jobs:
       - name: Tear down services
         if: always()
         run: |
-          docker compose -f docker/docker compose.yml down -v
+          docker compose -f docker/docker-compose.yml down -v
 
       - name: Send notification
         if: failure()

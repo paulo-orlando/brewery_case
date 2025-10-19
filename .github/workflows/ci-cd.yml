@@ -179,33 +179,33 @@ jobs:
 
       - name: Build images
         run: |
-          docker compose -f docker/docker compose.yml build
+          docker compose -f docker/docker-compose.yml build
 
       - name: Start services
         run: |
-          docker compose -f docker/docker compose.yml up -d
+          docker compose -f docker/docker-compose.yml up -d
           sleep 60  # Wait for Airflow to initialize
 
       - name: Check service health
         run: |
-          docker compose -f docker/docker compose.yml ps
+          docker compose -f docker/docker-compose.yml ps
           curl -f http://localhost:8080/health || exit 1
 
       - name: Run integration tests
         run: |
           # Test DAG validation
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             airflow dags list
           
           # Test DAG import
-          docker compose -f docker/docker compose.yml exec -T airflow-webserver \
+          docker compose -f docker/docker-compose.yml exec -T airflow-webserver \
             python /opt/airflow/dags/brewery_pipeline.py
 
       - name: Tear down services
         if: always()
         run: |
-          docker compose -f docker/docker compose.yml logs
-          docker compose -f docker/docker compose.yml down -v
+          docker compose -f docker/docker-compose.yml logs
+          docker compose -f docker/docker-compose.yml down -v
 
   # ============================================
   # Job 5: Security Scanning
