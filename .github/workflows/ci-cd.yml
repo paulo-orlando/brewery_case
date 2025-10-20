@@ -184,12 +184,26 @@ jobs:
       - name: Start services
         run: |
           docker compose -f docker/docker-compose.yml up -d
-          sleep 60  # Wait for Airflow to initialize
+
+      - name: Wait for Airflow to be healthy
+        run: |
+          echo "Waiting for Airflow webserver to be ready..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health 2>/dev/null; then
+              echo "Airflow is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Airflow not ready yet, waiting 10 seconds..."
+            sleep 10
+          done
+          echo "Airflow failed to become healthy after 5 minutes"
+          docker compose -f docker/docker-compose.yml ps
+          docker compose -f docker/docker-compose.yml logs airflow-webserver
+          exit 1
 
       - name: Check service health
         run: |
           docker compose -f docker/docker-compose.yml ps
-          curl -f http://localhost:8080/health || exit 1
 
       - name: Run integration tests
         run: |
