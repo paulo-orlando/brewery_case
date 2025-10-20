@@ -56,17 +56,17 @@ This repository provides **two complete implementations** for different environm
 
 ### Key Features
 
-✅ **Robust Error Handling**: Retry logic, exception handling, comprehensive logging
-✅ **Data Quality Gate**: Quality checks between Silver and Gold layers with pipeline halt on failure
-✅ **Automatic Data Cleanup**: Silver layer auto-cleanup before each run to prevent data corruption
-✅ **Character Encoding Support**: UTF-8 with special character handling (German umlauts, accents, etc.)
-✅ **Timestamped Outputs**: Gold layer files include date + time for unique identification
-✅ **Partitioning**: Silver layer partitioned by country and state
-✅ **Containerization**: Fully Dockerized with docker-compose
-✅ **Orchestration**: Apache Airflow with proper dependency management
-✅ **Standalone Execution**: Can run without Docker for development/testing
-✅ **Testing**: Comprehensive unit tests with pytest
-✅ **Monitoring**: Built-in data quality monitoring and alerting strategy
+- ✅ **Robust Error Handling**: Retry logic, exception handling, comprehensive logging
+- ✅ **Data Quality Gate**: Quality checks between Silver and Gold layers with pipeline halt on failure
+- ✅ **Automatic Data Cleanup**: Silver layer auto-cleanup before each run to prevent data corruption
+- ✅ **Character Encoding Support**: UTF-8 with special character handling (German umlauts, accents, etc.)
+- ✅ **Timestamped Outputs**: Gold layer files include date + time for unique identification
+- ✅ **Partitioning**: Silver layer partitioned by country and state
+- ✅ **Containerization**: Fully Dockerized with docker-compose
+- ✅ **Orchestration**: Apache Airflow with proper dependency management
+- ✅ **Standalone Execution**: Can run without Docker for development/testing
+- ✅ **Testing**: Comprehensive unit tests with pytest
+- ✅ **Monitoring**: Built-in data quality monitoring and alerting strategy
 
 ## 📁 Project Structure
 
@@ -753,28 +753,8 @@ aws mwaa create-environment \
 - **Databricks Setup**: [`databricks_azure/SETUP_GUIDE.md`](./databricks_azure/SETUP_GUIDE.md)
 - **Databricks Docs**: [`databricks_azure/README.md`](./databricks_azure/README.md)
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes with tests
-4. Run full test suite
-5. Submit pull request
-
-## 📄 License
-
-MIT License
 
 ## 👥 Authors
 
-- **Paulo Victor Orlando** - Initial work
+- **Paulo Victor Orlando** 
 
-## 🙏 Acknowledgments
-
-- Open Brewery DB for the public API
-- Apache Airflow community
-- Medallion architecture pattern
-
----
-
-**For questions or issues, please open a GitHub issue or contact the data engineering team.**
