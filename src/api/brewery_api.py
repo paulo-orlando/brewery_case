@@ -148,7 +148,6 @@ def fetch_brewery_data(base_url: str, output_path: str, per_page: int = 200) -> 
 
 
 if __name__ == "__main__":
-    # Test the module
     import sys
     
     output_path = sys.argv[1] if len(sys.argv) > 1 else "./data/raw"

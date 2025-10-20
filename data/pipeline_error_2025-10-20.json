@@ -1,0 +1,6 @@
+{
+  "execution_date": "2025-10-20",
+  "error": "Failed to perform quality checks: 'message'",
+  "error_type": "DataQualityError",
+  "timestamp": "2025-10-20T09:54:13.792428"
+}

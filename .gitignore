@@ -52,17 +52,6 @@ airflow-scheduler.pid
 webserver_config.py
 unittests.cfg
 
-# ============================================
-# DATA FILES (generated at runtime)
-# ============================================
-data/
-*.csv
-*.parquet
-*.json
-!requirements.txt
-!package.json
-!pytest.ini
-!.gitignore
 
 # ============================================
 # DOCKER
@@ -88,6 +77,7 @@ out/
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
+CHANGELOG.md
 
 # Vim
 *.swp
@@ -184,3 +174,4 @@ scripts/
 
 # Old test DAG (not part of solution)
 dags/teste_dag.py
+check_medallion_structure.py

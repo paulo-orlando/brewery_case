@@ -1,0 +1,180 @@
+{
+  "execution_date": "2025-10-20",
+  "start_time": "2025-10-20T09:59:30.411990",
+  "end_time": "2025-10-20T10:00:13.662843",
+  "duration_seconds": 43.250853,
+  "status": "SUCCESS",
+  "stages": {
+    "extract": {
+      "status": "success",
+      "records_extracted": 8923,
+      "output_file": "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\raw\\2025-10-20\\breweries_2025-10-20T13-00-08.169102.json",
+      "timestamp": "2025-10-20T13:00:08.169102"
+    },
+    "bronze": {
+      "status": "success",
+      "total_records": 62461,
+      "files_processed": 7,
+      "output_files": [
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130008.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130008.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130008.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130008.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130009.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130009.json",
+        "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\bronze\\breweries\\2025-10-20\\bronze_breweries_20251020_130009.json"
+      ],
+      "timestamp": "2025-10-20T13:00:09.614954"
+    },
+    "silver": {
+      "status": "success",
+      "total_records": 8923,
+      "partition_columns": [
+        "country",
+        "state"
+      ],
+      "unique_countries": 16,
+      "unique_states": 127,
+      "brewery_types": {
+        "micro": 4795,
+        "brewpub": 2525,
+        "planning": 672,
+        "closed": 256,
+        "regional": 228,
+        "contract": 188,
+        "large": 114,
+        "proprietor": 69,
+        "bar": 37,
+        "taproom": 20,
+        "nano": 15,
+        "beergarden": 3,
+        "location": 1
+      },
+      "records_with_coordinates": 6569,
+      "records_with_complete_address": 8159,
+      "output_path": "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\silver\\breweries",
+      "timestamp": "2025-10-20T13:00:12.867723"
+    },
+    "quality": {
+      "status": "PASSED",
+      "layer": "silver",
+      "total_records": 8781,
+      "checks": [
+        {
+          "check": "minimum_record_count",
+          "passed": true,
+          "value": 8781,
+          "threshold": 100,
+          "severity": "info"
+        },
+        {
+          "check": "duplicate_records",
+          "passed": true,
+          "value": "0.00%",
+          "threshold": "5.0%",
+          "severity": "info"
+        },
+        {
+          "check": "data_completeness",
+          "passed": true,
+          "value": "100.00%",
+          "threshold": "70.0%",
+          "severity": "info",
+          "details": {
+            "id": 100.0,
+            "name": 100.0,
+            "brewery_type": 100.0,
+            "country": 100.0,
+            "state": 100.0
+          }
+        },
+        {
+          "check": "coordinate_availability",
+          "passed": true,
+          "value": "73.32%",
+          "threshold": "50.0%",
+          "severity": "info"
+        },
+        {
+          "check": "schema_validation",
+          "passed": true,
+          "value": "all required columns present",
+          "severity": "info"
+        }
+      ],
+      "critical_failures": 0,
+      "warnings": 0,
+      "passed_checks": 5,
+      "total_checks": 5,
+      "checks_performed": 5,
+      "checks_passed": 5,
+      "success_rate": 100.0,
+      "issues": [],
+      "timestamp": "2025-10-20T13:00:13.195944+00:00"
+    },
+    "gold": {
+      "status": "success",
+      "aggregation_type": "type_location",
+      "source_records": 8781,
+      "aggregated_rows": 26000,
+      "output_files": {
+        "parquet": "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\gold\\breweries_by_type_location\\breweries_by_type_location_20251020_130013.parquet",
+        "csv": "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\gold\\breweries_by_type_location\\breweries_by_type_location_20251020_130013.csv",
+        "summary": "C:\\Users\\victo\\Progamacao\\brewery_case\\data\\gold\\breweries_by_type_location\\summary_statistics_20251020_130013.json"
+      },
+      "summary": {
+        "total_breweries": 8781,
+        "unique_countries": 16,
+        "unique_states": 125,
+        "unique_cities": 3390,
+        "brewery_types": {
+          "micro": 4728,
+          "brewpub": 2479,
+          "planning": 669,
+          "closed": 243,
+          "regional": 220,
+          "contract": 187,
+          "large": 113,
+          "proprietor": 66,
+          "bar": 37,
+          "taproom": 20,
+          "nano": 15,
+          "beergarden": 3,
+          "location": 1
+        },
+        "top_10_states": {
+          "California": 919,
+          "Washington": 486,
+          "Colorado": 448,
+          "New York": 419,
+          "Michigan": 375,
+          "Texas": 352,
+          "Pennsylvania": 345,
+          "Florida": 312,
+          "North Carolina": 307,
+          "Ohio": 303
+        },
+        "top_10_cities": {
+          "Portland": 105,
+          "Denver": 92,
+          "San Diego": 91,
+          "Seattle": 80,
+          "Chicago": 64,
+          "Austin": 49,
+          "Richmond": 42,
+          "Houston": 40,
+          "Minneapolis": 39,
+          "San Francisco": 39
+        },
+        "data_quality": {
+          "records_with_coordinates": 6438,
+          "pct_with_coordinates": 73.32,
+          "records_with_complete_address": 8021,
+          "pct_with_complete_address": 91.34
+        },
+        "generated_at": "2025-10-20T13:00:13.655782"
+      },
+      "timestamp": "2025-10-20T13:00:13.656784"
+    }
+  }
+}

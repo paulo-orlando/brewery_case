@@ -53,10 +53,76 @@ def create_gold_aggregations(
         logger.info(f"Reading silver layer data from {input_dir}")
         
         try:
-            # Read all partitions
-            df = pd.read_parquet(input_dir)
+            # Use pandas to read partitioned Parquet - it handles schema differences better
+            import pandas as pd
+            
+            # Read the entire partitioned dataset
+            df = pd.read_parquet(str(input_dir), engine='pyarrow')
+            
+            logger.info(f"Successfully loaded {len(df)} records from silver layer")
+            logger.info(f"Columns: {list(df.columns)}")
+            
         except Exception as e:
-            raise GoldLayerError(f"Failed to read silver layer Parquet: {e}")
+            logger.error(f"Failed to read partitioned Parquet with dataset API: {e}")
+            logger.info("Falling back to manual partition reading...")
+            
+            try:
+                # Fallback: Read files manually and extract partition info from paths
+                import pyarrow.parquet as pq
+                import pyarrow as pa
+                
+                parquet_files = list(input_dir.rglob('*.parquet'))
+                if not parquet_files:
+                    raise GoldLayerError("No Parquet files found in silver layer")
+                
+                logger.info(f"Found {len(parquet_files)} Parquet file(s) to read")
+                
+                tables = []
+                
+                for i, pq_file in enumerate(parquet_files):
+                    try:
+                        # Read table
+                        table = pq.read_table(pq_file, use_threads=False)
+                        
+                        # Extract partition values from path
+                        # Path format: .../country=USA/state=California/file.parquet
+                        parts = pq_file.parts
+                        partition_info = {}
+                        
+                        for part in parts:
+                            if '=' in part:
+                                key, value = part.split('=', 1)
+                                partition_info[key] = value
+                        
+                        # Add partition columns to table
+                        if partition_info:
+                            df_temp = table.to_pandas()
+                            for key, value in partition_info.items():
+                                df_temp[key] = value
+                            table = pa.Table.from_pandas(df_temp, preserve_index=False)
+                        
+                        tables.append(table)
+                        
+                        if (i + 1) % 20 == 0:
+                            logger.info(f"Processed {i + 1}/{len(parquet_files)} files...")
+                            
+                    except Exception as file_error:
+                        logger.warning(f"Skipping file {pq_file.name}: {file_error}")
+                        continue
+                
+                if not tables:
+                    raise GoldLayerError("No valid Parquet files could be read")
+                
+                # Concatenate all tables
+                logger.info(f"Concatenating {len(tables)} tables...")
+                combined_table = pa.concat_tables(tables)
+                df = combined_table.to_pandas()
+                
+                logger.info(f"Successfully loaded {len(df)} records from silver layer")
+                logger.info(f"Columns: {list(df.columns)}")
+                
+            except Exception as fallback_error:
+                raise GoldLayerError(f"Failed to read silver layer Parquet: {fallback_error}")
         
         if df.empty:
             raise GoldLayerError("No data found in silver layer")
@@ -69,8 +135,8 @@ def create_gold_aggregations(
         # Create primary aggregation: breweries by type and location
         agg_df = create_type_location_aggregation(df)
         
-        # Save aggregation
-        timestamp = datetime.utcnow().strftime("%Y%m%d")
+        # Save aggregation with timestamp (date and time for uniqueness)
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         output_file = output_dir / f"breweries_by_type_location_{timestamp}.parquet"
         
         agg_df.to_parquet(
@@ -81,9 +147,9 @@ def create_gold_aggregations(
         
         logger.info(f"✅ Saved aggregation to {output_file}")
         
-        # Also save as CSV for easy viewing
+        # Also save as CSV for easy viewing with proper UTF-8 encoding
         csv_file = output_dir / f"breweries_by_type_location_{timestamp}.csv"
-        agg_df.to_csv(csv_file, index=False)
+        agg_df.to_csv(csv_file, index=False, encoding='utf-8-sig')
         logger.info(f"✅ Saved CSV version to {csv_file}")
         
         # Create additional summary statistics

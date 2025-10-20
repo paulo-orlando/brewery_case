@@ -20,6 +20,46 @@ class SilverLayerError(Exception):
     pass
 
 
+def fix_encoding(text: str) -> str:
+    """
+    Fix common character encoding issues in text.
+    
+    Args:
+        text: Input text that may have encoding issues
+        
+    Returns:
+        Text with fixed encoding
+    """
+    if not isinstance(text, str) or text is None:
+        return text
+    
+    # Common encoding replacements (ISO-8859-1 to UTF-8 issues)
+    replacements = {
+        'Ã¤': 'ä', 'Ã¶': 'ö', 'Ã¼': 'ü', 'ÃŸ': 'ß',  # German
+        'Ã¡': 'á', 'Ã©': 'é', 'Ã­': 'í', 'Ã³': 'ó', 'Ãº': 'ú', 'Ã±': 'ñ',  # Spanish
+        'Ã ': 'à', 'Ã¨': 'è', 'Ã¬': 'ì', 'Ã²': 'ò', 'Ã¹': 'ù',  # Italian/French
+        'Ã§': 'ç', 'Ã£': 'ã', 'Ãµ': 'õ',  # Portuguese
+        'Ã‰': 'É', 'Ã': 'Á', 'Ã"': 'Ó',  # Uppercase accented
+        'K�rnten': 'Kärnten',  # Specific fix for Kärnten
+        '�': ''  # Remove replacement character
+    }
+    
+    result = text
+    for wrong, correct in replacements.items():
+        result = result.replace(wrong, correct)
+    
+    # Try to decode if still has issues
+    try:
+        # If text contains replacement character, try to fix
+        if '�' in result:
+            # Attempt to encode as latin-1 and decode as utf-8
+            result = result.encode('latin-1', errors='ignore').decode('utf-8', errors='ignore')
+    except (UnicodeDecodeError, UnicodeEncodeError, AttributeError):
+        pass
+    
+    return result
+
+
 def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Apply data quality transformations to brewery data.
@@ -27,10 +67,11 @@ def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
     Transformations applied:
     1. Standardize column names (lowercase, underscores)
     2. Handle missing values
-    3. Standardize location fields
-    4. Add derived columns
-    5. Remove duplicates
-    6. Validate data types
+    3. Fix character encoding issues
+    4. Standardize location fields
+    5. Add derived columns
+    6. Remove duplicates
+    7. Validate data types
     
     Args:
         df: Raw brewery DataFrame
@@ -53,7 +94,14 @@ def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].replace('', None)
             df[col] = df[col].replace('null', None)
     
-    # 3. Standardize location fields
+    # 3. Fix character encoding issues in text columns
+    text_columns = ['name', 'city', 'state', 'state_province', 'country', 
+                    'address_1', 'address_2', 'address_3', 'street']
+    for col in text_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: fix_encoding(x) if pd.notna(x) else x)
+    
+    # 4. Standardize location fields
     # Ensure country is properly set (default to "United States" if missing and state is US state)
     if 'country' in df.columns:
         df['country'] = df['country'].fillna('Unknown')
@@ -71,7 +119,7 @@ def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'state_province' in df.columns and 'state' in df.columns:
         df['state'] = df['state'].fillna(df['state_province'])
     
-    # 4. Add derived columns
+    # 5. Add derived columns
     df['ingestion_date'] = datetime.utcnow().date()
     df['ingestion_timestamp'] = datetime.utcnow()
     
@@ -94,7 +142,7 @@ def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'latitude' in df.columns and 'longitude' in df.columns:
         df['has_coordinates'] = df[['latitude', 'longitude']].notna().all(axis=1)
     
-    # 5. Remove duplicates based on ID
+    # 6. Remove duplicates based on ID
     if 'id' in df.columns:
         initial_count = len(df)
         df = df.drop_duplicates(subset=['id'], keep='last')
@@ -102,7 +150,7 @@ def clean_and_transform_data(df: pd.DataFrame) -> pd.DataFrame:
         if duplicates_removed > 0:
             logger.warning(f"Removed {duplicates_removed} duplicate records")
     
-    # 6. Validate brewery_type
+    # 7. Validate brewery_type
     if 'brewery_type' in df.columns:
         df['brewery_type'] = df['brewery_type'].fillna('unknown')
     
@@ -188,16 +236,20 @@ def transform_to_silver(
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Reset index to avoid __index_level_0__ column in Parquet
+        df = df.reset_index(drop=True)
+        
         # Write partitioned Parquet
-        table = pa.Table.from_pandas(df)
+        table = pa.Table.from_pandas(df, preserve_index=False)
         
         pq.write_to_dataset(
             table,
             root_path=str(output_dir),
             partition_cols=partition_cols,
             compression='snappy',
-            use_dictionary=True,
-            write_statistics=True
+            use_dictionary=False,  # Disable dictionary encoding to avoid issues
+            write_statistics=False,  # Disable statistics to avoid corruption
+            existing_data_behavior='overwrite_or_ignore'
         )
         
         # Generate statistics

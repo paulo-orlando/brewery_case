@@ -1,14 +1,15 @@
-# Brewery Data Pipeline - Quick Start Guide
+# Brewery Data Pipeline - Quick Start Guide (v0.0.6)
 
 ## 🎯 What You'll Need
 
-- Docker & Docker Compose installed
+- Docker & Docker Compose installed (Option 1)
+- OR Python 3.11+ (Option 2 - Standalone)
 - 4GB+ RAM available
 - Internet connection (to fetch API data)
 
 ## 🚀 3-Minute Setup
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker (Recommended for Production)
 
 ```bash
 # 1. Navigate to the project
@@ -30,7 +31,47 @@ docker-compose ps
 # In Airflow UI: Toggle ON the brewery_pipeline DAG and click "Trigger DAG"
 ```
 
-### Option 2: Local Python (For Development)
+### Option 2: Standalone Execution (NEW - No Docker Required!)
+
+**Perfect for development, testing, and quick runs**
+
+```powershell
+# Windows PowerShell
+cd brewery_case
+
+# Create and activate virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run complete pipeline (all layers in ~20-45 seconds)
+python run_pipeline_standalone.py
+
+# Check results
+python check_medallion_structure.py
+```
+
+```bash
+# Linux/Mac
+cd brewery_case
+
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run complete pipeline
+python run_pipeline_standalone.py
+
+# Check results
+python check_medallion_structure.py
+```
+
+### Option 3: Manual Layer Testing (Development)
 
 ```powershell
 # Windows PowerShell

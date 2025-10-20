@@ -1,10 +1,16 @@
 from datetime import datetime, timedelta
+import sys
+import os
+
+# Add the parent directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.dummy import DummyOperator
+from airflow.operators.bash import BashOperator
 from airflow.utils.task_group import TaskGroup
 
-# Importar suas funções dos módulos src
 from src.api.brewery_api import fetch_brewery_data
 from src.bronze.bronze_layer import save_to_bronze
 from src.silver.silver_layer import transform_to_silver
@@ -26,7 +32,7 @@ dag = DAG(
     'brewery_pipeline',
     default_args=default_args,
     description='Pipeline for brewery data - Medallion Architecture',
-    schedule_interval='@daily',  # ou '0 2 * * *' para rodar às 2h da manhã
+    schedule_interval='@daily',  # or '0 2 * * *' to run at 2am
     catchup=False,
     tags=['brewery', 'medallion', 'data-lake'],
 )
@@ -53,6 +59,13 @@ bronze_task = PythonOperator(
     dag=dag,
 )
 
+# Task 2.5: Clean existing Silver data before transformation
+clean_silver_task = BashOperator(
+    task_id='clean_silver_layer',
+    bash_command='rm -rf /opt/airflow/data/silver/breweries && mkdir -p /opt/airflow/data/silver/breweries',
+    dag=dag,
+)
+
 # Task 3: Transform to Silver Layer
 silver_task = PythonOperator(
     task_id='transform_to_silver',
@@ -65,18 +78,7 @@ silver_task = PythonOperator(
     dag=dag,
 )
 
-# Task 4: Create Gold Aggregations
-gold_task = PythonOperator(
-    task_id='create_gold_aggregations',
-    python_callable=create_gold_aggregations,
-    op_kwargs={
-        'input_path': '/opt/airflow/data/silver/breweries',
-        'output_path': '/opt/airflow/data/gold/breweries_by_type_location',
-    },
-    dag=dag,
-)
-
-# Task 5: Data Quality Checks
+# Task 4: Data Quality Check (Quality Gate before Gold)
 quality_check = PythonOperator(
     task_id='data_quality_check',
     python_callable=check_data_quality,
@@ -87,5 +89,16 @@ quality_check = PythonOperator(
     dag=dag,
 )
 
-# Define dependencies
-extract_task >> bronze_task >> silver_task >> gold_task >> quality_check
+# Task 5: Create Gold Aggregations
+gold_task = PythonOperator(
+    task_id='create_gold_aggregations',
+    python_callable=create_gold_aggregations,
+    op_kwargs={
+        'input_path': '/opt/airflow/data/silver/breweries',
+        'output_path': '/opt/airflow/data/gold/breweries_by_type_location',
+    },
+    dag=dag,
+)
+
+# Define dependencies (Quality Check acts as a gate between Silver and Gold)
+extract_task >> bronze_task >> clean_silver_task >> silver_task >> quality_check >> gold_task

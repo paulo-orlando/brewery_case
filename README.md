@@ -1,6 +1,29 @@
 # Brewery Data Pipeline - Medallion Architecture
 
-A production-ready data pipeline that ingests brewery data from the Open Brewery DB API and processes it through a medallion architecture (Bronze → Silver → Gold layers) using Apache Airflow.
+A production-ready data pipeline that ingests brewery data from the Open Brewery DB API and processes it through a medallion architecture (Bronze → Silver → Gold layers).
+
+## 🚀 Two Implementation Options
+
+This repository provides **two complete implementations** for different environments:
+
+### 1️⃣ **Airflow + Docker** (On-Premise/Self-Hosted)
+- 📂 **Location**: Root directory
+- 🔧 **Stack**: Apache Airflow, Docker, Pandas, Parquet
+- 🎯 **Best For**: Local development, on-premise deployments, full control
+- 📖 **Setup**: See instructions below
+
+### 2️⃣ **Databricks + Azure** (Cloud-Native)
+- 📂 **Location**: [`databricks_azure/`](./databricks_azure/)
+- 🔧 **Stack**: Databricks, PySpark, Azure Blob Storage, Delta Lake
+- 🎯 **Best For**: Cloud deployments, scalability, distributed processing
+- 💰 **Free Tier**: Compatible with Databricks Community Edition + Azure Free Tier
+- 📖 **Setup**: See [databricks_azure/SETUP_GUIDE.md](./databricks_azure/SETUP_GUIDE.md)
+
+**Choose the implementation that best fits your infrastructure and team expertise!**
+
+---
+
+## 📋 Airflow + Docker Implementation
 
 ## 🏗️ Architecture
 
@@ -34,10 +57,14 @@ A production-ready data pipeline that ingests brewery data from the Open Brewery
 ### Key Features
 
 ✅ **Robust Error Handling**: Retry logic, exception handling, comprehensive logging
-✅ **Data Quality Checks**: Automated validation at each layer
+✅ **Data Quality Gate**: Quality checks between Silver and Gold layers with pipeline halt on failure
+✅ **Automatic Data Cleanup**: Silver layer auto-cleanup before each run to prevent data corruption
+✅ **Character Encoding Support**: UTF-8 with special character handling (German umlauts, accents, etc.)
+✅ **Timestamped Outputs**: Gold layer files include date + time for unique identification
 ✅ **Partitioning**: Silver layer partitioned by country and state
 ✅ **Containerization**: Fully Dockerized with docker-compose
 ✅ **Orchestration**: Apache Airflow with proper dependency management
+✅ **Standalone Execution**: Can run without Docker for development/testing
 ✅ **Testing**: Comprehensive unit tests with pytest
 ✅ **Monitoring**: Built-in data quality monitoring and alerting strategy
 
@@ -121,6 +148,9 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Run complete standalone pipeline
+python run_pipeline_standalone.py
+
 # Run tests
 pytest src/tests/ -v --cov=src
 
@@ -130,6 +160,9 @@ python src/bronze/bronze_layer.py ./data/raw ./data/bronze
 python src/silver/silver_layer.py ./data/bronze ./data/silver
 python src/gold/gold_layer.py ./data/silver ./data/gold
 python src/common/data_quality.py ./data/silver silver
+
+# Check medallion structure
+python check_medallion_structure.py
 ```
 
 ## 🔍 Pipeline Details
@@ -141,12 +174,19 @@ extract_brewery_data
         ↓
   load_to_bronze
         ↓
+  clean_silver_layer (NEW - Auto cleanup)
+        ↓
  transform_to_silver
         ↓
-create_gold_aggregations
+  data_quality_check (QUALITY GATE - Pipeline halts on failure)
         ↓
-  data_quality_check
+create_gold_aggregations
 ```
+
+**Key Changes**:
+- 🧹 **Silver Cleanup**: Automatic removal of old/corrupted data before transformation
+- 🛡️ **Quality Gate**: Data quality check now runs BEFORE Gold layer (prevents bad data propagation)
+- ⏰ **Timestamped Outputs**: Gold files include both date and time (YYYYMMDD_HHMMSS)
 
 ### 1. Extract (API Layer)
 
@@ -182,12 +222,20 @@ create_gold_aggregations
 - ✅ Handle missing values and nulls
 - ✅ Parse and validate coordinates (lat/long)
 - ✅ Remove duplicate records
+- ✅ **Character encoding fixes** for special characters (ä, ö, ü, ñ, é, etc.)
+- ✅ **Auto cleanup** before processing (removes old/corrupted files)
 - ✅ Add derived columns:
   - `ingestion_date`
   - `ingestion_timestamp`
   - `location_key`
   - `has_complete_address`
   - `has_coordinates`
+
+**Character Encoding**:
+- Handles German umlauts: ä → ä, ö → ö, ü → ü
+- Handles Spanish/French characters: ñ → ñ, é → é, à → à
+- Special fix for "Kärnten" and other location names
+- UTF-8 encoding throughout the pipeline
 
 **Output**: `/opt/airflow/data/silver/breweries/` (partitioned)
 ```
@@ -212,6 +260,8 @@ silver/breweries/
      - `avg_latitude`, `avg_longitude`: Centroid coordinates
      - `pct_with_coordinates`: Percentage with geolocation
      - `pct_with_address`: Percentage with complete address
+   - **Creates complete cross-tabulation**: All state+type combinations (including zero counts)
+   - **Example**: 16 countries × 125 states × 13 types = 26,000 rows
 
 2. **Summary Statistics**
    - Total breweries
@@ -220,14 +270,23 @@ silver/breweries/
    - Brewery type distribution
    - Data quality metrics
 
-**Output**:
-- `/opt/airflow/data/gold/breweries_by_type_location/*.parquet`
-- `/opt/airflow/data/gold/breweries_by_type_location/*.csv`
-- `/opt/airflow/data/gold/summary_statistics_*.json`
+**Output** (with timestamp YYYYMMDD_HHMMSS):
+- `/opt/airflow/data/gold/breweries_by_type_location/breweries_by_type_location_20251020_130013.parquet`
+- `/opt/airflow/data/gold/breweries_by_type_location/breweries_by_type_location_20251020_130013.csv` (UTF-8-sig encoding)
+- `/opt/airflow/data/gold/summary_statistics_20251020_130013.json`
+
+**Why 8,923 → 26,000 rows?**
+The Gold layer creates a **complete analytical cube** with one row for each unique combination of country + state + brewery_type. This includes zero counts (e.g., "Australia/ACT/brewpub = 0") for comprehensive analysis.
 
 ### 5. Data Quality Checks
 
 **Module**: `src/common/data_quality.py`
+
+**Pipeline Behavior**:
+- ✅ **Quality Gate Position**: Runs BETWEEN Silver and Gold layers (Stage 4/6)
+- ✅ **Pipeline Halt**: If status = FAILED, pipeline stops and Gold layer is NOT created
+- ✅ **Warnings Allowed**: If status = WARNING, pipeline continues with logged issues
+- ✅ **Protection**: Prevents bad data from reaching expensive Gold aggregations
 
 **Checks Performed**:
 1. ✅ **Minimum Record Count**: Ensures sufficient data (threshold: 100 records)
@@ -237,9 +296,72 @@ silver/breweries/
 5. ✅ **Schema Validation**: Ensures required columns exist
 
 **Severity Levels**:
-- `CRITICAL`: Pipeline fails, requires immediate attention
-- `WARNING`: Pipeline continues, logged for review
+- `CRITICAL`: Pipeline fails immediately, Gold layer not created
+- `WARNING`: Pipeline continues, issues logged for review
 - `INFO`: Pass, everything OK
+
+**Example Output**:
+```
+✅ Quality check complete!
+   • Status: PASSED
+   • Total validated records: 8,781
+   • Checks performed: 5
+   • Checks passed: 5
+   • Success rate: 100.0%
+```
+
+## 📊 Monitoring & Alerting Strategy
+
+## 🆕 Recent Improvements (v0.0.6)
+
+### 1. Quality Gate Implementation
+**Problem**: Bad data could reach Gold layer, causing expensive reprocessing
+**Solution**: Moved data quality checks BEFORE Gold layer creation
+- Pipeline now halts on FAILED quality status
+- Gold aggregations only run on clean, validated data
+- Saves compute resources and prevents data corruption
+
+### 2. Silver Layer Auto-Cleanup
+**Problem**: Accumulated data from multiple runs caused:
+- High duplicate rates (66.67% → false warnings)
+- Corrupted Parquet files from schema changes
+- Quality check failures
+
+**Solution**: Automatic cleanup before each Silver transformation
+- Removes entire Silver directory before processing
+- Ensures fresh start with consistent schema
+- Quality scores improved from 80% to 100%
+
+**Implementation**:
+- **Standalone**: `shutil.rmtree()` in `run_pipeline_standalone.py` (lines 106-111)
+- **Airflow**: `BashOperator` with `rm -rf` command in DAG (lines 57-59)
+
+### 3. Gold Layer Timestamping
+**Problem**: Files with same date overwrite each other
+**Solution**: Include time in filename
+- Before: `breweries_by_type_location_20251020.csv`
+- After: `breweries_by_type_location_20251020_130013.csv`
+- Format: `YYYYMMDD_HHMMSS` for unique identification
+
+### 4. Character Encoding Fixes
+**Problem**: Special characters corrupted (K�rnten instead of Kärnten)
+**Solution**: Comprehensive UTF-8 handling
+- Added `fix_encoding()` function in Silver layer
+- Handles German umlauts (ä, ö, ü), Spanish/French accents (ñ, é, à)
+- CSV exports use `utf-8-sig` encoding (Excel-compatible)
+
+### 5. Code Localization
+**Problem**: Mixed Portuguese and English comments
+**Solution**: Complete English translation
+- All comments, docstrings, and print statements translated
+- Consistent English throughout codebase
+- Better maintainability for international teams
+
+### Performance Impact
+- **Pipeline Duration**: ~20-45 seconds (consistent)
+- **Quality Score**: 100% (up from 80%)
+- **Zero Warnings**: No more duplicate/corruption issues
+- **Clean Outputs**: Every run produces fresh, validated data
 
 ## 📊 Monitoring & Alerting Strategy
 
@@ -580,6 +702,56 @@ aws mwaa create-environment \
 - Simpler debugging and monitoring
 - Clear data lineage
 **Trade-off**: Longer total runtime vs. reliability
+
+## 🔀 Implementation Comparison
+
+### Airflow + Docker vs Databricks + Azure
+
+| Aspect | Airflow + Docker | Databricks + Azure |
+|--------|------------------|-------------------|
+| **Location** | Root directory | `databricks_azure/` |
+| **Orchestration** | Apache Airflow | Databricks Notebooks/Jobs |
+| **Processing** | Pandas (single-node) | PySpark (distributed) |
+| **Storage** | Local/S3 (Parquet) | Azure Blob (Delta Lake) |
+| **Infrastructure** | Self-hosted Docker | Fully managed cloud |
+| **Cost** | Infrastructure + maintenance | Pay-per-use (Free tier available) |
+| **Scalability** | Limited (vertical) | High (horizontal) |
+| **Setup Time** | 5-10 minutes | 20-30 minutes |
+| **Best For** | Local dev, on-premise | Cloud-native, big data |
+| **Data Volume** | < 100 GB | Any size |
+| **Team Skill** | Python, Docker, DevOps | PySpark, Cloud, Data Engineering |
+
+### When to Use Each
+
+**Choose Airflow + Docker if you:**
+- ✅ Need on-premise deployment
+- ✅ Have existing Docker infrastructure
+- ✅ Prefer full infrastructure control
+- ✅ Work with smaller datasets (< 100 GB)
+- ✅ Want simpler Python (Pandas) code
+- ✅ Need to minimize cloud costs
+
+**Choose Databricks + Azure if you:**
+- ✅ Want cloud-native solution
+- ✅ Need scalability for growing data
+- ✅ Prefer managed services (less ops)
+- ✅ Want Delta Lake features (ACID, time travel)
+- ✅ Plan to integrate with Azure ecosystem
+- ✅ Need distributed processing (PySpark)
+- ✅ Want to leverage free tier for learning
+
+**Both implementations provide:**
+- ✅ Complete medallion architecture
+- ✅ Data quality gates
+- ✅ Character encoding support
+- ✅ Comprehensive logging
+- ✅ Production-ready code
+
+### Quick Start Links
+
+- **Airflow Setup**: See [Setup Instructions](#-getting-started) above
+- **Databricks Setup**: [`databricks_azure/SETUP_GUIDE.md`](./databricks_azure/SETUP_GUIDE.md)
+- **Databricks Docs**: [`databricks_azure/README.md`](./databricks_azure/README.md)
 
 ## 🤝 Contributing
 

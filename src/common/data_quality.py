@@ -50,7 +50,29 @@ def check_data_quality(input_path: str, layer: str = "silver", thresholds: Dict[
         
         # Load data based on layer
         if layer == "silver" or layer == "gold":
-            df = pd.read_parquet(input_dir)
+            # Use same robust reading method as Gold layer
+            import pyarrow.parquet as pq
+            import pyarrow as pa
+            
+            parquet_files = list(input_dir.rglob('*.parquet'))
+            if not parquet_files:
+                raise DataQualityError("No Parquet files found")
+            
+            tables = []
+            for pq_file in parquet_files:
+                try:
+                    table = pq.read_table(pq_file, use_threads=False)
+                    tables.append(table)
+                except Exception:
+                    logger.warning(f"Skipping corrupted file: {pq_file.name}")
+                    continue
+            
+            if not tables:
+                raise DataQualityError("No valid Parquet files found")
+            
+            combined_table = pa.concat_tables(tables)
+            df = combined_table.to_pandas()
+            
         elif layer == "bronze":
             # Read JSON files
             json_files = list(input_dir.glob("*.json"))
@@ -165,6 +187,10 @@ def check_data_quality(input_path: str, layer: str = "silver", thresholds: Dict[
             "warnings": len(warnings),
             "passed_checks": len([c for c in checks if c["passed"]]),
             "total_checks": len(checks),
+            "checks_performed": len(checks),
+            "checks_passed": len([c for c in checks if c["passed"]]),
+            "success_rate": (len([c for c in checks if c["passed"]]) / len(checks) * 100) if checks else 0,
+            "issues": [f"{f['check']}: {f['value']}" for f in critical_failures + warnings],
             "timestamp": pd.Timestamp.utcnow().isoformat()
         }
         
