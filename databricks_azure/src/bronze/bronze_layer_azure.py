@@ -42,14 +42,10 @@ def save_to_bronze_azure(
     try:
         logger.info(f"Reading raw data from {input_path}")
         
-        # Read JSON files from Azure
-        # Pattern to match all JSON files in the directory
         json_pattern = f"{input_path}/*.json" if not input_path.endswith('/') else f"{input_path}*.json"
         
-        # Read JSON - each file contains a full extraction with metadata
         raw_df = spark.read.option("multiline", "true").json(json_pattern)
         
-        # If the JSON has a "records" array, explode it
         if "records" in raw_df.columns:
             from pyspark.sql.functions import explode
             df = raw_df.select(
@@ -58,7 +54,6 @@ def save_to_bronze_azure(
                 "execution_date",
                 "total_records"
             )
-            # Flatten the record structure
             from pyspark.sql.functions import col
             record_cols = [col(f"record.{c}").alias(c) for c in df.select("record.*").columns]
             df = df.select(
@@ -69,17 +64,14 @@ def save_to_bronze_azure(
         else:
             df = raw_df
         
-        # Add bronze layer metadata
         df_with_metadata = df \
             .withColumn("bronze_ingestion_timestamp", current_timestamp()) \
             .withColumn("bronze_ingestion_date", lit(datetime.utcnow().strftime('%Y-%m-%d'))) \
             .withColumn("source_file", input_file_name())
         
-        # Count records
         record_count = df_with_metadata.count()
         logger.info(f"Processing {record_count} records to bronze layer")
         
-        # Save to Bronze layer as JSON (preserving original structure)
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         output_file = f"{output_path}/bronze_breweries_{timestamp}.json"
         

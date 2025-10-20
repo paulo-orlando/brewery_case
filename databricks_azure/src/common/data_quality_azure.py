@@ -49,12 +49,10 @@ def check_data_quality_azure(
         
         logger.info(f"Running data quality checks on {layer} layer: {input_path}")
         
-        # Read Delta table
         df = spark.read.format("delta").load(input_path)
         
         checks = []
         
-        # Check 1: Minimum record count
         record_count = df.count()
         check_1_passed = record_count >= thresholds["min_records"]
         checks.append({
@@ -65,7 +63,6 @@ def check_data_quality_azure(
             "severity": "critical" if not check_1_passed else "info"
         })
         
-        # Check 2: Duplicate records (if id column exists)
         if 'id' in df.columns:
             total_records = record_count
             unique_records = df.select('id').distinct().count()
@@ -80,7 +77,6 @@ def check_data_quality_azure(
                 "severity": "warning" if not check_2_passed else "info"
             })
         
-        # Check 3: Data completeness (non-null percentage)
         critical_cols = ['id', 'name', 'brewery_type', 'country', 'state']
         available_critical_cols = [c for c in critical_cols if c in df.columns]
         
@@ -102,7 +98,6 @@ def check_data_quality_azure(
                 "details": completeness_scores
             })
         
-        # Check 4: Coordinate availability
         if 'latitude' in df.columns and 'longitude' in df.columns:
             coords_available = df.filter(
                 col('latitude').isNotNull() & col('longitude').isNotNull()
@@ -117,7 +112,6 @@ def check_data_quality_azure(
                 "severity": "warning" if not check_4_passed else "info"
             })
         
-        # Check 5: Schema validation
         expected_cols = ['id', 'name', 'brewery_type']
         missing_cols = [c for c in expected_cols if c not in df.columns]
         check_5_passed = len(missing_cols) == 0
@@ -128,7 +122,6 @@ def check_data_quality_azure(
             "severity": "critical" if not check_5_passed else "info"
         })
         
-        # Determine overall status
         critical_failures = [c for c in checks if c["severity"] == "critical" and not c["passed"]]
         warnings = [c for c in checks if c["severity"] == "warning" and not c["passed"]]
         
@@ -155,7 +148,6 @@ def check_data_quality_azure(
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        # Log results
         logger.info(f"Quality check result: {status}")
         logger.info(f"Passed: {result['passed_checks']}/{result['total_checks']}")
         
@@ -169,7 +161,6 @@ def check_data_quality_azure(
             for warning in warnings:
                 logger.warning(f"  - {warning['check']}: {warning['value']}")
         
-        # Raise error if critical failures
         if critical_failures:
             raise DataQualityError(f"Data quality check failed with {len(critical_failures)} critical issue(s)")
         
@@ -193,7 +184,6 @@ def quality_check_notebook(spark, config):
     Returns:
         Quality check result dictionary
     """
-    # Use mounted paths or ABFS paths
     if hasattr(config, 'DATABRICKS_MOUNT_POINT_SILVER'):
         input_path = f"{config.DATABRICKS_MOUNT_POINT_SILVER}/breweries"
     else:
