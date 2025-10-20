@@ -53,11 +53,12 @@ def create_gold_aggregations(
         logger.info(f"Reading silver layer data from {input_dir}")
         
         try:
-            # Use pandas to read partitioned Parquet - it handles schema differences better
+            # Use pandas to read partitioned Parquet with schema unification
             import pandas as pd
+            import pyarrow.parquet as pq
             
-            # Read the entire partitioned dataset
-            df = pd.read_parquet(str(input_dir), engine='pyarrow')
+            # Read the entire partitioned dataset - pandas handles schema differences
+            df = pd.read_parquet(str(input_dir), engine='pyarrow', use_nullable_dtypes=False)
             
             logger.info(f"Successfully loaded {len(df)} records from silver layer")
             logger.info(f"Columns: {list(df.columns)}")
@@ -77,12 +78,12 @@ def create_gold_aggregations(
                 
                 logger.info(f"Found {len(parquet_files)} Parquet file(s) to read")
                 
-                tables = []
+                dataframes = []
                 
                 for i, pq_file in enumerate(parquet_files):
                     try:
-                        # Read table
-                        table = pq.read_table(pq_file, use_threads=False)
+                        # Read directly to pandas to avoid schema concatenation issues
+                        df_temp = pd.read_parquet(pq_file, engine='pyarrow')
                         
                         # Extract partition values from path
                         # Path format: .../country=USA/state=California/file.parquet
@@ -94,14 +95,11 @@ def create_gold_aggregations(
                                 key, value = part.split('=', 1)
                                 partition_info[key] = value
                         
-                        # Add partition columns to table
-                        if partition_info:
-                            df_temp = table.to_pandas()
-                            for key, value in partition_info.items():
-                                df_temp[key] = value
-                            table = pa.Table.from_pandas(df_temp, preserve_index=False)
+                        # Add partition columns
+                        for key, value in partition_info.items():
+                            df_temp[key] = value
                         
-                        tables.append(table)
+                        dataframes.append(df_temp)
                         
                         if (i + 1) % 20 == 0:
                             logger.info(f"Processed {i + 1}/{len(parquet_files)} files...")
@@ -110,13 +108,12 @@ def create_gold_aggregations(
                         logger.warning(f"Skipping file {pq_file.name}: {file_error}")
                         continue
                 
-                if not tables:
+                if not dataframes:
                     raise GoldLayerError("No valid Parquet files could be read")
                 
-                # Concatenate all tables
-                logger.info(f"Concatenating {len(tables)} tables...")
-                combined_table = pa.concat_tables(tables)
-                df = combined_table.to_pandas()
+                # Concatenate all dataframes (pandas handles schema differences better)
+                logger.info(f"Concatenating {len(dataframes)} dataframes...")
+                df = pd.concat(dataframes, ignore_index=True)
                 
                 logger.info(f"Successfully loaded {len(df)} records from silver layer")
                 logger.info(f"Columns: {list(df.columns)}")

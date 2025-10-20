@@ -1,0 +1,52 @@
+{
+  "total_breweries": 8781,
+  "unique_countries": 16,
+  "unique_states": 125,
+  "unique_cities": 3390,
+  "brewery_types": {
+    "micro": 4728,
+    "brewpub": 2479,
+    "planning": 669,
+    "closed": 243,
+    "regional": 220,
+    "contract": 187,
+    "large": 113,
+    "proprietor": 66,
+    "bar": 37,
+    "taproom": 20,
+    "nano": 15,
+    "beergarden": 3,
+    "location": 1
+  },
+  "top_10_states": {
+    "California": 919,
+    "Washington": 486,
+    "Colorado": 448,
+    "New%20York": 419,
+    "Michigan": 375,
+    "Texas": 352,
+    "Pennsylvania": 345,
+    "Florida": 312,
+    "North%20Carolina": 307,
+    "Ohio": 303
+  },
+  "top_10_cities": {
+    "Portland": 105,
+    "Denver": 92,
+    "San Diego": 91,
+    "Seattle": 80,
+    "Chicago": 64,
+    "Austin": 49,
+    "Richmond": 42,
+    "Houston": 40,
+    "Minneapolis": 39,
+    "Columbus": 39
+  },
+  "data_quality": {
+    "records_with_coordinates": 6438,
+    "pct_with_coordinates": 73.32,
+    "records_with_complete_address": 8021,
+    "pct_with_complete_address": 91.34
+  },
+  "generated_at": "2025-10-20T16:29:18.807542"
+}

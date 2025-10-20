@@ -231,7 +231,11 @@ def transform_to_silver(
         # Validate partition columns exist
         missing_cols = [col for col in partition_cols if col not in df.columns]
         if missing_cols:
-            raise SilverLayerError(f"Partition columns not found in data: {missing_cols}")
+            logger.warning(f"Partition columns not found in data: {missing_cols}. Available columns: {df.columns.tolist()}")
+            raise SilverLayerError(f"Partition columns not found in data: {missing_cols}. Available columns: {df.columns.tolist()}")
+        
+        logger.info(f"DataFrame has {len(df)} records with columns: {df.columns.tolist()}")
+        logger.info(f"Partition columns verified: {partition_cols}")
         
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -239,8 +243,58 @@ def transform_to_silver(
         # Reset index to avoid __index_level_0__ column in Parquet
         df = df.reset_index(drop=True)
         
-        # Write partitioned Parquet
-        table = pa.Table.from_pandas(df, preserve_index=False)
+        # Convert date columns to proper pandas datetime types before schema inference
+        if 'ingestion_date' in df.columns:
+            df['ingestion_date'] = pd.to_datetime(df['ingestion_date']).dt.date
+        if 'ingestion_timestamp' in df.columns:
+            df['ingestion_timestamp'] = pd.to_datetime(df['ingestion_timestamp'])
+        
+        # Ensure all string columns have consistent schema (replace NaN with empty string, then back to None)
+        # This prevents schema inconsistencies where some partitions have null type instead of string
+        for col in df.columns:
+            if df[col].dtype == 'object' and col not in partition_cols:
+                # Check if this is actually a date/datetime column
+                if col in ['ingestion_date']:
+                    continue  # Skip date columns
+                # Fill NaN with empty string temporarily
+                df[col] = df[col].fillna('')
+                # Convert empty strings back to None for proper null handling
+                df[col] = df[col].replace('', None)
+        
+        # Define explicit schema to ensure consistency across partitions
+        schema_fields = []
+        for col in df.columns:
+            # Note: Partition columns need to be in the schema for write_to_dataset
+            
+            # Special handling for known date columns
+            if col == 'ingestion_date':
+                schema_fields.append(pa.field(col, pa.date32(), nullable=True))
+            elif col == 'ingestion_timestamp':
+                schema_fields.append(pa.field(col, pa.timestamp('us'), nullable=True))
+            elif df[col].dtype == 'object':
+                # String type (nullable)
+                schema_fields.append(pa.field(col, pa.string(), nullable=True))
+            elif df[col].dtype == 'float64':
+                # Double type (nullable)
+                schema_fields.append(pa.field(col, pa.float64(), nullable=True))
+            elif df[col].dtype == 'int64':
+                # Int64 type (nullable)
+                schema_fields.append(pa.field(col, pa.int64(), nullable=True))
+            elif df[col].dtype == 'bool':
+                # Boolean type (nullable)
+                schema_fields.append(pa.field(col, pa.bool_(), nullable=True))
+            elif pd.api.types.is_datetime64_any_dtype(df[col]):
+                # Timestamp type
+                schema_fields.append(pa.field(col, pa.timestamp('us'), nullable=True))
+            else:
+                # Default to string for unknown types
+                schema_fields.append(pa.field(col, pa.string(), nullable=True))
+        
+        # Create schema
+        schema = pa.schema(schema_fields)
+        
+        # Write partitioned Parquet with explicit schema
+        table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
         
         pq.write_to_dataset(
             table,
