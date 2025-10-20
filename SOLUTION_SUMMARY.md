@@ -171,7 +171,7 @@ python run_pipeline_standalone.py
 - Pipeline health monitoring (duration, success rate, SLA)
 - Data quality monitoring (completeness, duplicates, schema drift)
 - Infrastructure monitoring (CPU, memory, disk)
-- Alert configuration (Slack, Email, PagerDuty)
+- Alert configuration (Email, PagerDuty)
 - Incident response procedures
 - Grafana dashboard configuration
 - Cost monitoring

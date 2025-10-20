@@ -95,8 +95,8 @@
 │  STAGE 8:      │
 │  NOTIFY        │
 ├────────────────┤
-│ • Slack msg    │
 │ • Email alert  │
+│ • Archive logs │
 └────────────────┘
 
 
@@ -157,7 +157,7 @@
                               │
                               ▼
                     ┌─────────────────┐
-                    │  Slack / Email  │
+                    │  Email          │
                     │  Notifications  │
                     ├─────────────────┤
                     │ ✅ Build pass   │
@@ -207,6 +207,6 @@
 ┌─────────────────┐    ┌─────────────────┐
 │ Export logs     │    │ Export logs     │
 │ Archive         │    │ Send alert      │
-│ artifacts       │    │ to Slack        │
+│ artifacts       │    │ to team         │
 └─────────────────┘    └─────────────────┘
 ```
