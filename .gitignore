@@ -175,5 +175,3 @@ scripts/
 # Old test DAG (not part of solution)
 dags/teste_dag.py
 check_medallion_structure.py
-
-EMAIL_RESPONSE.md
