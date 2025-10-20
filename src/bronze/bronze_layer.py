@@ -41,14 +41,11 @@ def save_to_bronze(input_path: str, output_path: str) -> Dict[str, Any]:
         input_dir = Path(input_path)
         output_dir = Path(output_path)
         
-        # Validate input
         if not input_dir.exists():
             raise BronzeLayerError(f"Input path does not exist: {input_path}")
         
-        # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Find JSON files in input
         json_files = list(input_dir.glob("*.json"))
         
         if not json_files:
@@ -62,11 +59,9 @@ def save_to_bronze(input_path: str, output_path: str) -> Dict[str, Any]:
         for json_file in json_files:
             logger.info(f"Processing {json_file.name}")
             
-            # Read and validate JSON
             with open(json_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # Extract records (handle both raw list and packaged format)
             if isinstance(data, list):
                 records = data
                 metadata = {}
@@ -80,7 +75,6 @@ def save_to_bronze(input_path: str, output_path: str) -> Dict[str, Any]:
                 logger.warning(f"No records found in {json_file.name}")
                 continue
             
-            # Add bronze layer metadata
             bronze_data = {
                 "bronze_metadata": {
                     "ingestion_timestamp": datetime.utcnow().isoformat(),
@@ -92,7 +86,6 @@ def save_to_bronze(input_path: str, output_path: str) -> Dict[str, Any]:
                 "data": records
             }
             
-            # Save to bronze with timestamp
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
             output_file = output_dir / f"bronze_breweries_{timestamp}.json"
             
@@ -135,7 +128,6 @@ def validate_bronze_data(file_path: str) -> Dict[str, Any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Check required structure
         required_keys = ["bronze_metadata", "data"]
         missing_keys = [k for k in required_keys if k not in data]
         
@@ -161,7 +153,6 @@ def validate_bronze_data(file_path: str) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Test the module
     import sys
     
     if len(sys.argv) < 3:

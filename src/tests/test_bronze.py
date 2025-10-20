@@ -60,12 +60,10 @@ class TestSaveToBronze:
         assert result["total_records"] == 2
         assert result["files_processed"] == 1
         
-        # Verify output file exists
         bronze_dir = Path(bronze_output_dir)
         json_files = list(bronze_dir.glob("*.json"))
         assert len(json_files) == 1
         
-        # Verify file contents
         with open(json_files[0], 'r') as f:
             data = json.load(f)
         
@@ -92,7 +90,6 @@ class TestValidateBronzeData:
     
     def test_validate_bronze_data_success(self, tmp_path):
         """Test successful validation."""
-        # Create valid bronze file
         bronze_file = tmp_path / "bronze_test.json"
         data = {
             "bronze_metadata": {
@@ -113,7 +110,7 @@ class TestValidateBronzeData:
     def test_validate_bronze_data_missing_keys(self, tmp_path):
         """Test validation failure for missing keys."""
         bronze_file = tmp_path / "bronze_invalid.json"
-        data = {"data": [{"id": "test"}]}  # Missing bronze_metadata
+        data = {"data": [{"id": "test"}]} 
         
         with open(bronze_file, 'w') as f:
             json.dump(data, f)
