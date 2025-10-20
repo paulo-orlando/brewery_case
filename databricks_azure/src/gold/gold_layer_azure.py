@@ -45,7 +45,6 @@ def create_gold_aggregations_azure(
     try:
         logger.info(f"Reading silver layer data from {input_path}")
         
-        # Read Delta Lake table from Silver layer
         df = spark.read.format("delta").load(input_path)
         
         record_count = df.count()
@@ -54,7 +53,6 @@ def create_gold_aggregations_azure(
         if record_count == 0:
             raise GoldLayerError("No data found in silver layer")
         
-        # Create aggregation: breweries by type and location
         logger.info("Creating type and location aggregation")
         
         agg_df = df.groupBy('country', 'state', 'brewery_type').agg(
@@ -66,23 +64,19 @@ def create_gold_aggregations_azure(
             (spark_sum(when(col('has_complete_address') == True, 1).otherwise(0)) / count('*') * 100).alias('pct_with_address')
         )
         
-        # Round numeric columns
         agg_df = agg_df \
             .withColumn('avg_latitude', spark_round(col('avg_latitude'), 4)) \
             .withColumn('avg_longitude', spark_round(col('avg_longitude'), 4)) \
             .withColumn('pct_with_coordinates', spark_round(col('pct_with_coordinates'), 2)) \
             .withColumn('pct_with_address', spark_round(col('pct_with_address'), 2))
         
-        # Add aggregation metadata
         agg_df = agg_df.withColumn('aggregation_timestamp', current_timestamp())
         
-        # Sort by country, state, and brewery count
         agg_df = agg_df.orderBy('country', 'state', col('brewery_count').desc())
         
         agg_count = agg_df.count()
         logger.info(f"Created aggregation with {agg_count} rows")
         
-        # Save aggregation as Delta Lake
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         aggregation_path = f"{output_path}/breweries_by_type_location"
         
@@ -93,7 +87,6 @@ def create_gold_aggregations_azure(
         
         logger.info(f"✅ Saved aggregation to {aggregation_path}")
         
-        # Also save as CSV for easy viewing
         csv_path = f"{output_path}/breweries_by_type_location_{timestamp}.csv"
         agg_df.coalesce(1) \
             .write \
@@ -104,7 +97,6 @@ def create_gold_aggregations_azure(
         
         logger.info(f"✅ Saved CSV version to {csv_path}")
         
-        # Create summary statistics
         logger.info("Creating summary statistics")
         
         summary = {
@@ -134,7 +126,6 @@ def create_gold_aggregations_azure(
             "timestamp": timestamp
         }
         
-        # Save summary as JSON
         summary_path = f"{output_path}/summary_statistics_{timestamp}.json"
         summary_json = json.dumps(summary, indent=2, ensure_ascii=False)
         spark.sparkContext.parallelize([summary_json]).saveAsTextFile(summary_path)

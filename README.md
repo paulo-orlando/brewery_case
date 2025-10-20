@@ -106,13 +106,32 @@ brewery_case/
 
 ### Installation
 
+#### Option A: Quick Start (Recommended)
+
+**Windows:**
+```powershell
+git clone https://github.com/paulo-orlando/brewery_case.git
+cd brewery_case\docker
+.\start-docker.ps1
+```
+
+**Linux/Mac:**
+```bash
+git clone https://github.com/paulo-orlando/brewery_case.git
+cd brewery_case/docker
+export AIRFLOW_UID=$(id -u)  # Optional: Set user ID
+docker-compose up -d
+```
+
+#### Option B: Manual Setup
+
 1. **Clone the repository**
 ```bash
 git clone https://github.com/paulo-orlando/brewery_case.git
 cd brewery_case
 ```
 
-2. **Set up environment variables** (optional)
+2. **Set up environment (Linux/Mac only - optional)**
 ```bash
 export AIRFLOW_UID=$(id -u)
 ```
@@ -550,7 +569,25 @@ schedule_interval='0 2 * * *'  # Run at 2 AM
 ### Common Issues
 
 1. **Docker services won't start**
+
+**Windows (PowerShell):**
+```powershell
+cd docker
+
+# Check logs
+docker-compose logs -f
+
+# Restart services
+docker-compose down -v
+
+# Use the automated script
+.\start-docker.ps1
+```
+
+**Linux/Mac:**
 ```bash
+cd docker
+
 # Check logs
 docker-compose logs -f
 
@@ -560,14 +597,26 @@ docker-compose up -d
 ```
 
 2. **Permission denied errors**
+
+**Linux/Mac:**
 ```bash
-# Fix permissions
+cd docker
 mkdir -p ./logs ./plugins
 chmod -R 777 ./logs ./plugins
 ```
 
+**Windows:**
+```powershell
+cd docker
+# Permissions are usually not an issue on Windows
+# If needed, run PowerShell as Administrator
+New-Item -ItemType Directory -Path ".\logs",".\plugins" -Force
+```
+
 3. **DAG not appearing in UI**
 ```bash
+cd docker
+
 # Check for Python errors
 docker-compose exec airflow-webserver airflow dags list
 docker-compose exec airflow-webserver python /opt/airflow/dags/brewery_pipeline.py

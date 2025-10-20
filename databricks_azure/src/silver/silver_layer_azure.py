@@ -84,14 +84,12 @@ def transform_to_silver_azure(
         
         logger.info(f"Reading bronze data from {input_path}")
         
-        # Read JSON files from Bronze layer
         json_pattern = f"{input_path}/*.json" if not input_path.endswith('/') else f"{input_path}*.json"
         df = spark.read.option("multiline", "true").json(json_pattern)
         
         initial_count = df.count()
         logger.info(f"Loaded {initial_count} total records from bronze layer")
         
-        # Remove duplicates based on 'id' column
         if 'id' in df.columns:
             df_deduplicated = df.dropDuplicates(['id'])
             duplicates_removed = initial_count - df_deduplicated.count()
@@ -101,8 +99,6 @@ def transform_to_silver_azure(
         
         logger.info(f"Starting transformation on {df.count()} records")
         
-        # Data transformations
-        # 1. Standardize text columns (trim and handle nulls)
         text_columns = [
             'name', 'brewery_type', 'address_1', 'address_2', 'address_3',
             'city', 'state_province', 'postal_code', 'country',
@@ -114,21 +110,17 @@ def transform_to_silver_azure(
                 df = df.withColumn(col_name, trim(col(col_name)))
                 df = df.withColumn(col_name, when(col(col_name) == "", None).otherwise(col(col_name)))
         
-        # 2. Fix character encoding
         df = fix_encoding_spark(df, text_columns)
         
-        # 3. Parse and validate coordinates
         if 'latitude' in df.columns:
             df = df.withColumn('latitude', col('latitude').cast(DoubleType()))
         
         if 'longitude' in df.columns:
             df = df.withColumn('longitude', col('longitude').cast(DoubleType()))
         
-        # 4. Add derived columns
         df = df.withColumn('ingestion_timestamp', current_timestamp())
         df = df.withColumn('ingestion_date', lit(datetime.utcnow().strftime('%Y-%m-%d')))
         
-        # Location key (country-state combination)
         df = df.withColumn(
             'location_key',
             when(col('country').isNotNull() & col('state').isNotNull(),
@@ -136,7 +128,6 @@ def transform_to_silver_azure(
             ).otherwise(None)
         )
         
-        # Has complete address flag
         df = df.withColumn(
             'has_complete_address',
             when(
@@ -148,7 +139,6 @@ def transform_to_silver_azure(
             ).otherwise(lit(False))
         )
         
-        # Has coordinates flag
         df = df.withColumn(
             'has_coordinates',
             when(
@@ -157,7 +147,6 @@ def transform_to_silver_azure(
             ).otherwise(lit(False))
         )
         
-        # 5. Ensure partition columns are not null (required for partitioning)
         for part_col in partition_cols:
             if part_col in df.columns:
                 df = df.withColumn(
@@ -168,7 +157,6 @@ def transform_to_silver_azure(
         final_count = df.count()
         logger.info(f"Transformation complete: {final_count} records")
         
-        # Get unique counts for partitions
         partition_stats = {}
         for part_col in partition_cols:
             if part_col in df.columns:
@@ -176,7 +164,6 @@ def transform_to_silver_azure(
                 partition_stats[f"unique_{part_col}"] = unique_count
                 logger.info(f"   Unique {part_col}: {unique_count}")
         
-        # Save as Delta Lake format (better for updates and analytics)
         logger.info(f"Writing to silver layer: {output_path}")
         df.write \
             .format("delta") \
