@@ -439,12 +439,7 @@ The Gold layer creates a **complete analytical cube** with one row for each uniq
 
 **Critical Alerts** (Pipeline failures, data quality failures):
 - Email: `email_on_failure=True` in DAG args
-- Slack: Airflow Slack webhook integration
-- PagerDuty: For 24/7 on-call rotation
-
-**Warning Alerts** (Performance degradation, quality warnings):
-- Email digests (daily summary)
-- Slack channel (non-urgent)
+- PagerDuty: For 24/7 on-call rotation (optional)
 
 **Implementation Example**:
 ```python
@@ -452,7 +447,6 @@ The Gold layer creates a **complete analytical cube** with one row for each uniq
 default_args = {
     'email_on_failure': True,
     'email': ['data-team@company.com'],
-    'on_failure_callback': slack_alert_function,
     'sla': timedelta(minutes=15),
 }
 ```
@@ -495,11 +489,11 @@ curl http://localhost:8080/health
 
 | Condition | Severity | Action | Channel |
 |-----------|----------|--------|---------|
-| Pipeline failure | CRITICAL | Immediate investigation | PagerDuty + Slack |
-| Quality check failure | CRITICAL | Data review required | Email + Slack |
-| Task duration > 15min | WARNING | Performance review | Slack |
+| Pipeline failure | CRITICAL | Immediate investigation | Email |
+| Quality check failure | CRITICAL | Data review required | Email |
+| Task duration > 15min | WARNING | Performance review | Email |
 | Record count variance > 20% | WARNING | Data investigation | Email |
-| Disk usage > 80% | WARNING | Cleanup/scaling | Slack |
+| Disk usage > 80% | WARNING | Cleanup/scaling | Email |
 
 ## 🧪 Testing
 

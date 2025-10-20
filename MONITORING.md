@@ -57,13 +57,9 @@ def send_alert(context):
     task_instance = context['task_instance']
     dag_id = context['dag'].dag_id
     
-    # Slack webhook
-    slack_webhook = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-    message = f"❌ Task Failed: {dag_id}.{task_instance.task_id}"
-    requests.post(slack_webhook, json={"text": message})
-    
     # Email (configured in airflow.cfg)
     # Automatically sent if email_on_failure=True
+    # For custom notifications, add your integration here
 ```
 
 ### 1.3 Data Quality Monitoring
@@ -141,9 +137,9 @@ def check_schema_drift(df: pd.DataFrame, expected_schema: dict):
 
 | Severity | Response Time | Notification Channels | Example |
 |----------|--------------|----------------------|---------|
-| CRITICAL | Immediate (15 min) | PagerDuty + Slack + Email | Pipeline failure, data corruption |
-| HIGH | 1 hour | Slack + Email | Quality check failure, SLA breach |
-| MEDIUM | 4 hours | Slack | Performance degradation, warnings |
+| CRITICAL | Immediate (15 min) | PagerDuty + Email | Pipeline failure, data corruption |
+| HIGH | 1 hour | Email | Quality check failure, SLA breach |
+| MEDIUM | 4 hours | Email | Performance degradation, warnings |
 | LOW | 24 hours | Email digest | Informational, capacity planning |
 
 ### 2.2 Alert Rules
@@ -153,19 +149,19 @@ def check_schema_drift(df: pd.DataFrame, expected_schema: dict):
 - name: pipeline_failure
   condition: any_task_failed
   severity: critical
-  channels: [pagerduty, slack_critical, email]
+  channels: [email, pagerduty]
   message: "Brewery pipeline failed at task {{ task_id }}"
   
 - name: data_quality_critical
   condition: critical_quality_check_failed
   severity: critical
-  channels: [slack_critical, email]
+  channels: [email]
   message: "Critical data quality issue: {{ issue_description }}"
   
 - name: no_data_extracted
   condition: records_extracted == 0
   severity: critical
-  channels: [pagerduty, slack_critical]
+  channels: [email, pagerduty]
   message: "API extraction returned zero records"
 ```
 
@@ -174,13 +170,13 @@ def check_schema_drift(df: pd.DataFrame, expected_schema: dict):
 - name: sla_breach
   condition: task_duration > sla_threshold
   severity: high
-  channels: [slack, email]
+  channels: [email]
   message: "SLA breached: {{ task_id }} took {{ duration }} (SLA: {{ sla }})"
   
 - name: record_count_variance
   condition: abs(current - previous) / previous > 0.2
   severity: high
-  channels: [slack, email]
+  channels: [email]
   message: "Record count variance: {{ variance }}% (current: {{ current }}, previous: {{ previous }})"
 ```
 
@@ -189,78 +185,19 @@ def check_schema_drift(df: pd.DataFrame, expected_schema: dict):
 - name: quality_warning
   condition: quality_check_status == "WARNING"
   severity: medium
-  channels: [slack]
+  channels: [email]
   message: "Quality check warning: {{ warning_message }}"
   
 - name: slow_task
   condition: task_duration > 2 * avg_duration
   severity: medium
-  channels: [slack]
+  channels: [email]
   message: "Task {{ task_id }} slower than usual: {{ duration }} vs avg {{ avg }}"
 ```
 
 ### 2.3 Alert Implementations
 
-**Slack Integration:**
-```python
-# src/common/alerting.py
-
-import requests
-from typing import Dict, Any
-
-class SlackAlerter:
-    def __init__(self, webhook_url: str):
-        self.webhook_url = webhook_url
-    
-    def send_alert(self, severity: str, title: str, details: Dict[str, Any]):
-        """Send formatted alert to Slack."""
-        
-        color_map = {
-            "critical": "#FF0000",
-            "high": "#FF9900",
-            "medium": "#FFCC00",
-            "low": "#0099FF"
-        }
-        
-        emoji_map = {
-            "critical": "🚨",
-            "high": "⚠️",
-            "medium": "⚡",
-            "low": "ℹ️"
-        }
-        
-        message = {
-            "attachments": [{
-                "color": color_map.get(severity, "#CCCCCC"),
-                "title": f"{emoji_map.get(severity, '•')} {title}",
-                "fields": [
-                    {"title": k, "value": str(v), "short": True}
-                    for k, v in details.items()
-                ],
-                "footer": "Brewery Data Pipeline",
-                "ts": int(time.time())
-            }]
-        }
-        
-        response = requests.post(self.webhook_url, json=message)
-        response.raise_for_status()
-
-# Usage in DAG:
-def task_failure_callback(context):
-    alerter = SlackAlerter(os.getenv('SLACK_WEBHOOK_URL'))
-    alerter.send_alert(
-        severity="critical",
-        title="Task Failed",
-        details={
-            "DAG": context['dag'].dag_id,
-            "Task": context['task_instance'].task_id,
-            "Execution Date": str(context['execution_date']),
-            "Log URL": context['task_instance'].log_url,
-        }
-    )
-```
-
-**Email Alerting:**
+**Email Alerting (Built-in Airflow):**
 ```python
 # Configure in airflow.cfg:
 [email]
@@ -564,7 +501,6 @@ monthly_metrics = {
 ## Implementation Checklist
 
 - [ ] Set up Airflow alerting callbacks
-- [ ] Configure Slack webhook
 - [ ] Set up email SMTP
 - [ ] Create Grafana dashboard
 - [ ] Implement extended quality checks

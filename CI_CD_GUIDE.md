@@ -70,7 +70,7 @@ graph LR
 - Tags with version number
 
 #### Job 8: **Notifications**
-- Sends Slack notifications
+- Can be configured for email or other integrations
 - Includes build status and links
 
 ---
@@ -125,8 +125,7 @@ GITHUB_TOKEN: <automatically provided>
 DOCKERHUB_USERNAME: your-dockerhub-username
 DOCKERHUB_TOKEN: your-dockerhub-access-token
 
-# Optional: Slack Notifications
-SLACK_WEBHOOK: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+# Optional: Additional integrations can be configured
 
 # Optional: Codecov
 CODECOV_TOKEN: your-codecov-token
@@ -140,15 +139,6 @@ CODECOV_TOKEN: your-codecov-token
 # 2. Go to Account Settings → Security
 # 3. Click "New Access Token"
 # 4. Copy the token
-```
-
-**Slack Webhook:**
-```bash
-# 1. Go to api.slack.com/apps
-# 2. Create new app
-# 3. Enable "Incoming Webhooks"
-# 4. Add webhook to workspace
-# 5. Copy webhook URL
 ```
 
 **Codecov Token:**
@@ -509,12 +499,12 @@ git push origin main
 ## 🎯 Next Steps
 
 1. **Enable workflows** (commit and push `.github/workflows/` files)
-2. **Configure secrets** (add tokens and webhooks)
+2. **Configure secrets** (add necessary tokens)
 3. **Set up environments** (staging and production)
 4. **Test manual trigger** (run workflow manually first)
 5. **Monitor first run** (check logs and fix any issues)
 6. **Add status badges** (to README.md)
-7. **Configure notifications** (Slack, email, etc.)
+7. **Configure notifications** (email, etc.)
 
 ---
 
