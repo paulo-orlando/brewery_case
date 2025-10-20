@@ -75,11 +75,9 @@ def fetch_brewery_data(base_url: str, output_path: str, per_page: int = 200) -> 
         BreweryAPIError: If extraction fails after retries
     """
     try:
-        # Create output directory
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Fetch all pages
         all_breweries = []
         page = 1
         empty_pages = 0
@@ -90,7 +88,7 @@ def fetch_brewery_data(base_url: str, output_path: str, per_page: int = 200) -> 
                 
                 if not data:
                     empty_pages += 1
-                    if empty_pages >= 2:  # Stop after 2 consecutive empty pages
+                    if empty_pages >= 2:  
                         logger.info("Reached end of data (2 consecutive empty pages)")
                         break
                 else:
@@ -99,24 +97,20 @@ def fetch_brewery_data(base_url: str, output_path: str, per_page: int = 200) -> 
                 
                 page += 1
                 
-                # Safety limit to prevent infinite loops
                 if page > 1000:
                     logger.warning("Reached safety limit of 1000 pages")
                     break
                     
             except (HTTPError, RequestException) as e:
                 if page == 1:
-                    # If first page fails, raise immediately
                     raise BreweryAPIError(f"Failed to fetch first page: {e}")
                 else:
-                    # For other pages, log and continue
                     logger.warning(f"Failed to fetch page {page}, stopping pagination: {e}")
                     break
         
         if not all_breweries:
             raise BreweryAPIError("No data retrieved from API")
         
-        # Save raw data with metadata
         timestamp = datetime.utcnow().isoformat()
         output_file = output_dir / f"breweries_{timestamp.replace(':', '-')}.json"
         

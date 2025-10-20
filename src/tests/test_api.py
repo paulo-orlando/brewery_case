@@ -86,7 +86,6 @@ class TestFetchBreweryData:
     @patch('src.api.brewery_api.fetch_page')
     def test_fetch_brewery_data_success(self, mock_fetch_page, sample_brewery_data, temp_output_dir):
         """Test successful data extraction."""
-        # Mock two pages of data then empty
         mock_fetch_page.side_effect = [
             sample_brewery_data,
             sample_brewery_data,
@@ -100,14 +99,12 @@ class TestFetchBreweryData:
         )
         
         assert result["status"] == "success"
-        assert result["records_extracted"] == 4  # 2 pages * 2 records
+        assert result["records_extracted"] == 4  
         
-        # Check output file was created
         output_dir = Path(temp_output_dir)
         json_files = list(output_dir.glob("*.json"))
         assert len(json_files) == 1
         
-        # Verify file contents
         with open(json_files[0], 'r') as f:
             data = json.load(f)
         

@@ -45,19 +45,15 @@ def create_gold_aggregations(
         input_dir = Path(input_path)
         output_dir = Path(output_path)
         
-        # Validate input
         if not input_dir.exists():
             raise GoldLayerError(f"Input path does not exist: {input_path}")
         
-        # Read silver layer data (partitioned Parquet)
         logger.info(f"Reading silver layer data from {input_dir}")
         
         try:
-            # Use pandas to read partitioned Parquet with schema unification
             import pandas as pd
             import pyarrow.parquet as pq
             
-            # Read the entire partitioned dataset - pandas handles schema differences
             df = pd.read_parquet(str(input_dir), engine='pyarrow', use_nullable_dtypes=False)
             
             logger.info(f"Successfully loaded {len(df)} records from silver layer")
@@ -68,7 +64,6 @@ def create_gold_aggregations(
             logger.info("Falling back to manual partition reading...")
             
             try:
-                # Fallback: Read files manually and extract partition info from paths
                 import pyarrow.parquet as pq
                 import pyarrow as pa
                 
@@ -82,11 +77,8 @@ def create_gold_aggregations(
                 
                 for i, pq_file in enumerate(parquet_files):
                     try:
-                        # Read directly to pandas to avoid schema concatenation issues
                         df_temp = pd.read_parquet(pq_file, engine='pyarrow')
                         
-                        # Extract partition values from path
-                        # Path format: .../country=USA/state=California/file.parquet
                         parts = pq_file.parts
                         partition_info = {}
                         
@@ -95,7 +87,6 @@ def create_gold_aggregations(
                                 key, value = part.split('=', 1)
                                 partition_info[key] = value
                         
-                        # Add partition columns
                         for key, value in partition_info.items():
                             df_temp[key] = value
                         
@@ -111,7 +102,6 @@ def create_gold_aggregations(
                 if not dataframes:
                     raise GoldLayerError("No valid Parquet files could be read")
                 
-                # Concatenate all dataframes (pandas handles schema differences better)
                 logger.info(f"Concatenating {len(dataframes)} dataframes...")
                 df = pd.concat(dataframes, ignore_index=True)
                 
@@ -126,13 +116,10 @@ def create_gold_aggregations(
         
         logger.info(f"Loaded {len(df)} records from silver layer")
         
-        # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create primary aggregation: breweries by type and location
         agg_df = create_type_location_aggregation(df)
         
-        # Save aggregation with timestamp (date and time for uniqueness)
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         output_file = output_dir / f"breweries_by_type_location_{timestamp}.parquet"
         
@@ -144,12 +131,10 @@ def create_gold_aggregations(
         
         logger.info(f"✅ Saved aggregation to {output_file}")
         
-        # Also save as CSV for easy viewing with proper UTF-8 encoding
         csv_file = output_dir / f"breweries_by_type_location_{timestamp}.csv"
         agg_df.to_csv(csv_file, index=False, encoding='utf-8-sig')
         logger.info(f"✅ Saved CSV version to {csv_file}")
         
-        # Create additional summary statistics
         summary = create_summary_statistics(df)
         summary_file = output_dir / f"summary_statistics_{timestamp}.json"
         
@@ -194,14 +179,12 @@ def create_type_location_aggregation(df: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info("Creating type and location aggregation")
     
-    # Ensure required columns exist
     required_cols = ['brewery_type', 'country', 'state']
     missing_cols = [col for col in required_cols if col not in df.columns]
     
     if missing_cols:
         raise GoldLayerError(f"Missing required columns for aggregation: {missing_cols}")
     
-    # Group by type, country, and state
     agg_df = df.groupby(['country', 'state', 'brewery_type']).agg(
         brewery_count=('id', 'count'),
         unique_cities=('city', 'nunique'),
@@ -211,16 +194,13 @@ def create_type_location_aggregation(df: pd.DataFrame) -> pd.DataFrame:
         pct_with_address=('has_complete_address', lambda x: (x.sum() / len(x) * 100) if len(x) > 0 else 0)
     ).reset_index()
     
-    # Round numeric columns
     agg_df['avg_latitude'] = agg_df['avg_latitude'].round(4)
     agg_df['avg_longitude'] = agg_df['avg_longitude'].round(4)
     agg_df['pct_with_coordinates'] = agg_df['pct_with_coordinates'].round(2)
     agg_df['pct_with_address'] = agg_df['pct_with_address'].round(2)
     
-    # Sort by country, state, and brewery count
     agg_df = agg_df.sort_values(['country', 'state', 'brewery_count'], ascending=[True, True, False])
     
-    # Add aggregation metadata
     agg_df['aggregation_date'] = datetime.utcnow().date()
     
     logger.info(f"Created aggregation with {len(agg_df)} rows")
@@ -261,7 +241,6 @@ def create_summary_statistics(df: pd.DataFrame) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Test the module
     import sys
     
     if len(sys.argv) < 3:

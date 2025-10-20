@@ -767,7 +767,7 @@ MIT License
 
 ## 👥 Authors
 
-- **Your Name** - Initial work
+- **Paulo Victor Orlando** - Initial work
 
 ## 🙏 Acknowledgments
 
